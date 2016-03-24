@@ -1,0 +1,41 @@
+i2s_init	KEYWORD2
+i2s_config	KEYWORD2
+i2s_configurePorts	KEYWORD2
+i2s_setupInput	KEYWORD2
+i2s_setupOutput	KEYWORD2
+i2s_enableInputDMA	KEYWORD2
+i2s_enableOutputDMA	KEYWORD2
+i2s_startInput	KEYWORD2
+i2s_startOutput	KEYWORD2
+
+i2c_init	KEYWORD2
+i2c_resetBus	KEYWORD2
+i2c_send	KEYWORD2
+i2c_receive	KEYWORD2
+
+DMA_init	KEYWORD2
+DMA_startAll	KEYWORD2
+
+SGTL5000_enable	KEYWORD2
+SGTL5000_inputSelect	KEYWORD2
+
+
+JOB_init	KEYWORD2
+
+JOB_add		KEYWORD2
+JOB_schedule		KEYWORD2
+JOB_cancel
+		KEYWORD2
+pit_init		KEYWORD2
+pit0_start		KEYWORD2
+pit1_start		KEYWORD2
+TIMER_setup		KEYWORD2
+TIMER_add		KEYWORD2
+TIMER_cancel
+		KEYWORD2
+DELAY_add		KEYWORD2
+SWI_init		KEYWORD2
+SWI_add		KEYWORD2
+SWI_trigger		KEYWORD2
+Fxn_t	KEYWORD3
+Ptr	KEYWORD3

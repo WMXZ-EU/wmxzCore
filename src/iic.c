@@ -38,14 +38,22 @@ void i2c_init(void)
 	SIM_SCGC4 |= SIM_SCGC4_I2C0;
 }
 
-void IIC_setup(void) // inspired by TwoWire
+void IIC_setup(int alt) // inspired by TwoWire
 {
 	if (m_i2c_isRunning) return;
 	//
 	I2C0_C1 = 0;
 	
-	CORE_PIN18_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
-	CORE_PIN19_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
+	if(alt==0)
+	{
+		CORE_PIN18_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
+		CORE_PIN19_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
+	}
+	else
+	{
+		CORE_PIN16_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
+		CORE_PIN17_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
+	}
 #if F_BUS == 60000000
 	I2C0_F = 0x2C;	// 104 kHz
 	// I2C0_F = 0x1C; // 416 kHz
@@ -58,8 +66,8 @@ void IIC_setup(void) // inspired by TwoWire
 	I2C0_FLT = 4;
 #elif F_BUS == 48000000
 	// I2C0_F = 0x27;	// 100 kHz
-	 I2C0_F = 0x1A; // (112)  428 kHz
-	//I2C0_F = 0x0D; // 1 MHz
+	I2C0_F = 0x1A; // (112)  428 kHz
+	// I2C0_F = 0x0D; // 1 MHz
 	I2C0_FLT = 4;
 #elif F_BUS == 40000000
 	I2C0_F = 0x29;	// 104 kHz
@@ -101,13 +109,19 @@ void IIC_setup(void) // inspired by TwoWire
 	m_i2c_isRunning=1;
 }
 
-void i2c_resetBus(void) // inspired from i2c_t3
+void i2c_resetBus(int alt) // inspired from i2c_t3
 {
     uint8_t scl=0, sda=0, count=0;
 	
-        sda = 18;
+	if(alt==0)
+	{   sda = 18;
         scl = 19;
-
+	}
+	else
+	{   sda = 17;
+        scl = 16;
+	}
+	
         // change pin mux to digital I/O
         pinMode(sda,INPUT);
         pinMode(scl,OUTPUT);
@@ -121,7 +135,7 @@ void i2c_resetBus(void) // inspired from i2c_t3
             delayMicroseconds(5);
         }
 	m_i2c_isRunning=0;
-	IIC_setup();
+	IIC_setup(alt);
 }
 
 

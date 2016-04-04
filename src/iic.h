@@ -35,7 +35,7 @@ extern "C"{
 
 void i2c_init(void);
 
-void IIC_setup(void);
+void IIC_setup(int alt);
 int IIC_write(const uint8_t *data, int ndat, uint8_t address, int sendStop);
 int IIC_read(uint8_t *data, int length, uint8_t address, int sendStop);
 
@@ -52,7 +52,7 @@ uint8_t writeRegister(uint8_t address, uint8_t reg, uint8_t value);
 uint8_t readRegister(uint8_t address, uint8_t reg);
 void printRegister(uint8_t address, uint8_t reg);
 
-void i2c_resetBus(void);
+void i2c_resetBus(int alt);
 void i2c_send(uint8_t address, uint8_t *data, int ndat, int sendStop, I2C_FUNC funct);
 void i2c_receive(uint8_t address, uint8_t *data, int ndat, int sendStop, I2C_FUNC funct);
 

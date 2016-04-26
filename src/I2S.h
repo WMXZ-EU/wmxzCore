@@ -29,6 +29,9 @@
 #define I2S_TX_2CH 1
 #define I2S_RX_2CH 2
 
+#define CS5361_DEV 0
+#define SGTL5000_DEV 1
+
 typedef struct {
 	int nbytes;
 	int nsamp;
@@ -40,7 +43,7 @@ extern "C"{
 #endif
 
 void i2s_init(void);
-void i2s_config(int isMaster, int nbits, int fs_scale, int dual, int sync);
+void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync);
 void i2s_configurePorts(int iconf);
 void i2s_setupOutput(void * buffer, int ndat, int port, int prio);
 void i2s_startOutput(void);

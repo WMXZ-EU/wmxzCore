@@ -39,15 +39,16 @@ void i2s_init(void)
 {	SIM_SCGC6 |= SIM_SCGC6_I2S;
 }
 
-#define SGTL5000
-void i2s_config(int isMaster, int nbits, int fs_scale, int dual, int sync)
+void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync)
 {
 // rules to generate click dividers
 //  MCGPLLCLK=F_CPU // is set by _MICS(3)
 //  MCLK= MCGPLLCLK*(iscl1+1)/(iscl2+1)
 //	BCLK= MCLK/2/(iscl3+1)/32; // division by 32 is to have 32 bits within frame sync (BCLK)
 //
-	#if defined CS5361
+	int iscl1,iscl2,iscl3;
+	if(device==CS5361_DEV)
+	{
 		// adjust speeds to requirements by cs5361
 		int cs_speed=1;
 		if(fs_scale>3)
@@ -58,16 +59,23 @@ void i2s_config(int isMaster, int nbits, int fs_scale, int dual, int sync)
 			cs_speed=4;  	// fs >100 kHz % fs < 204 kHz
 		
 		// following timings are relative 200 kHz @144 MHz
-		int iscl1 = nbits/cs_speed-1;
-		int iscl2 = fs_scale*3*15-1;  
-		int iscl3 = 4/cs_speed-1;
-	#elif defined SGTL5000
+		iscl1 = nbits/cs_speed-1;
+		iscl2 = fs_scale*3*15-1;  
+		iscl3 = 4/cs_speed-1;
+	}
+	else if(device==SGTL5000_DEV)
+	{
 		// following timings are relative 96 kHz @144 MHz
-		int iscl1 = 6-1;
-		int iscl2 = fs_scale*35;  
-		int iscl3 = 4-1;
-//		int iscl1=3, iscl2=50, iscl3=3; // 44.1 kHz @ 144 MHz //CMIS fft (OK) OK with for processing	
-	#endif	
+		iscl1 = 6-1;
+		iscl2 = fs_scale*35;  
+		iscl3 = 4-1;
+	}
+	else
+	{ // 44.1 kHz @ 144 MHz //CMIS fft (OK) OK with for processing
+		iscl1=3;
+		iscl2=50;
+		iscl3=3;	
+	}
 
 	// if either transmitter or receiver is enabled, do nothing
 	if (I2S0_TCSR & I2S_TCSR_TE) return;

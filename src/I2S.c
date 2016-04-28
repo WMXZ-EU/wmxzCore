@@ -1,5 +1,5 @@
 /*
- * WMXZ Teensy simple data logger
+ * WMXZ Teensy core library
  * Copyright (c) 2016 Walter Zimmer.
  *
  * Permission is hereby granted, free of charge, to any person obtaining

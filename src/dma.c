@@ -1,5 +1,5 @@
 /*
- * WMXZ Teensy simple data logger
+ * WMXZ Teensy core library
  * Copyright (c) 2016 Walter Zimmer.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -22,7 +22,7 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-//dma,c
+//dma.c
 
 // WMXZ
 // Inspired by PJRC's DMAChannel.cpp

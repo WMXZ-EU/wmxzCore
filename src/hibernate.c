@@ -46,11 +46,22 @@ void rtcSetAlarm(uint32_t nsec)
 /********************LLWU**********************************/
 #define LLWU_ME_WUME5_MASK       0x20u
 #define LLWU_F3_MWUF5_MASK       0x20u
+#define LLWU_MF5_MWUF5_MASK      0x20u
+
+#ifdef HAS_KINETIS_LLWU_32CH
+#define K66
+#else
+#define K20
+#endif
 
 static void llwuISR(void)
 {
     //
+#ifdef K20
     LLWU_F3 |= LLWU_F3_MWUF5_MASK; // clear source in LLWU Flag register
+#elseif K66
+    LLWU_MF5 |= LLWU_MF5_MWUF5_MASK; // clear source in LLWU Flag register
+#endif
     //
     RTC_IER = 0;// clear RTC interrupts
 }
@@ -67,6 +78,12 @@ void llwuSetup(void)
 	LLWU_PE2 = 0;
 	LLWU_PE3 = 0;
 	LLWU_PE4 = 0;
+#ifdef K66
+	LLWU_PE5 = 0;
+	LLWU_PE6 = 0;
+	LLWU_PE7 = 0;
+	LLWU_PE8 = 0;
+#endif
 	LLWU_ME  = LLWU_ME_WUME5_MASK; //rtc alarm
 //   
     SIM_SOPT1CFG |= SIM_SOPT1CFG_USSWE;

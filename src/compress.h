@@ -22,48 +22,43 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-//i2s.h
-#ifndef I2S_H
-#define I2S_H
+//compress.h
 
-#define I2S_TX_2CH 1
-#define I2S_RX_2CH 2
-
-#define CS5361_DEV 0
-#define SGTL5000_DEV 1
-#define AD7982_DEV 2
-
-typedef struct {
-	int nbytes;
-	int nsamp;
-	int nchan;
-} i2s_context_t ;
+#ifndef COMPRESS_H
+#define COMPRESS_H
 
 #ifdef __cplusplus
 extern "C"{
 #endif
 
-void i2s_init(void);
-void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync);
-void i2s_configurePorts(int iconf);
-void i2s_setupOutput(void * buffer, int ndat, int port, int prio);
-void i2s_startOutput(void);
+//#undef x3SHORT
+//#define x3SHORT
+#ifdef x3SHORT 	
+	typedef short x3data_t;
+	typedef unsigned short u3data_t; 
+	typedef unsigned int l3data_t; 
+	#define NBITS 16
+#else
+	typedef int x3data_t;
+	typedef unsigned int u3data_t; 
+	typedef unsigned long long l3data_t; 
+	#define NBITS 32
+#endif	
 
-void i2s_setupInput(void * buffer, int ndat, int port, int prio);
-void i2s_startInput(void);
-void i2s_stop(void);
 
-void i2s_enableInputDMA(void);
-void i2s_enableOutputDMA(void);
+void u3_printv(u3data_t xx, int nn);
+void x3_print(x3data_t xx);
+void u3_print(u3data_t xx);
+void l3_print(l3data_t xx);
 
-void i2s_DMA_setup(void);
+int encode(u3data_t *out, x3data_t *inp, int nn, int ich, int nch);
+void decode(x3data_t *out, u3data_t *inp, int nn, int nb, int ich, int nch);
 
-void i2sInProcessing(void * s, void * d);
-void i2sOutProcessing(void * s, void * d);
-
+int pack(u3data_t *out, u3data_t *inp, int nn, int nb);
+int unpack(u3data_t *out, u3data_t *inp, int nn, int *nb, int km);
 
 #ifdef __cplusplus
 }
-#endif //_cplusplus
+#endif
 
-#endif //I2S_H
+#endif

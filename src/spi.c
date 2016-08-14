@@ -43,7 +43,13 @@
 // PBR = [0:3]  => [2+0, 1+2*[1:3]] = [2,3,5,7]
 // DBR = [0,1]
 // define FULL_SPEED (<=20MHz)
-#if F_BUS == 60000000
+#if F_BUS == 144000000
+	#define SPI_CLOCK   (SPI_CTAR_PBR(3) | SPI_CTAR_DBR) //(144 / 7) * ((1+1)/2) = 10.55 MHz
+
+#elif F_BUS == 72000000
+	#define SPI_CLOCK   (SPI_CTAR_PBR(2) | SPI_CTAR_DBR) //(72 / 5) * ((1+1)/2) = 14.4 MHz
+
+#elif F_BUS == 60000000
 	#define SPI_CLOCK   (SPI_CTAR_PBR(1) | SPI_CTAR_DBR) //(60 / 3) * ((1+1)/2) = 20 MHz
 
 #elif F_BUS == 56000000
@@ -56,7 +62,7 @@
 	#define SPI_CLOCK   (SPI_CTAR_PBR(0) | SPI_CTAR_DBR) //(36 / 2) * ((1+1)/2) = 18 MHz
 
 #else
-	#error "F_BUS must be 60, 56, 48, 36 MHz"
+	#error "F_BUS must be 144, 72, 60, 56, 48, 36 MHz"
 #endif
 
 // following ctarTAB adapted from SPI
@@ -153,6 +159,7 @@ uint32_t spi_setup(int div)
 	#endif
 
 	uint32_t ctar = ctarTab[ii].ctar | SPI_CTAR_FMSZ(7);
+//	ctar |= SPI_CTAR_CPHA;
 	SPI0_CTAR0 =	ctar;
 	SPI0_CTAR1 =	ctar | SPI_CTAR_FMSZ(8);
 	

@@ -22,48 +22,31 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-//i2s.h
-#ifndef I2S_H
-#define I2S_H
+//zMods.c
 
-#define I2S_TX_2CH 1
-#define I2S_RX_2CH 2
+#include "kinetis.h"
+#include "zMods.h"
 
-#define CS5361_DEV 0
-#define SGTL5000_DEV 1
-#define AD7982_DEV 2
-
-typedef struct {
-	int nbytes;
-	int nsamp;
-	int nchan;
-} i2s_context_t ;
-
-#ifdef __cplusplus
-extern "C"{
-#endif
-
-void i2s_init(void);
-void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync);
-void i2s_configurePorts(int iconf);
-void i2s_setupOutput(void * buffer, int ndat, int port, int prio);
-void i2s_startOutput(void);
-
-void i2s_setupInput(void * buffer, int ndat, int port, int prio);
-void i2s_startInput(void);
-void i2s_stop(void);
-
-void i2s_enableInputDMA(void);
-void i2s_enableOutputDMA(void);
-
-void i2s_DMA_setup(void);
-
-void i2sInProcessing(void * s, void * d);
-void i2sOutProcessing(void * s, void * d);
-
-
-#ifdef __cplusplus
+void zMods(void)
+{
+	#ifdef xxxxxx
+	// allow overclocking F_BUS
+	#if F_CPU == 144000000
+		// config divisors: 144 MHz core, 144,72,48,36 MHz bus, 28.8 MHz flash
+		
+		SIM_CLKDIV1 = SIM_CLKDIV1_OUTDIV1(0) | SIM_CLKDIV1_OUTDIV4(4);
+//		SIM_CLKDIV1 = | SIM_CLKDIV1_OUTDIV2(((F_CPU/F_BUS)-1)); // does it work reliable?
+//
+		#if F_BUS==(F_CPU)
+			SIM_CLKDIV1 = | SIM_CLKDIV1_OUTDIV2(0); // 144 MHz
+		#elif F_BUS==(F_CPU/2)
+			SIM_CLKDIV1 = | SIM_CLKDIV1_OUTDIV2(1); // 72 MHz
+		#elif F_BUS==(F_CPU/3)
+			SIM_CLKDIV1 = | SIM_CLKDIV1_OUTDIV2(2); // 48 MHz
+		#elif F_BUS==(F_CPU/4)
+			SIM_CLKDIV1 = | SIM_CLKDIV1_OUTDIV2(3); // 36 MHz
+		#endif
+//		((F_CPU/F_BUS)-1)
+	#endif
+	#endif
 }
-#endif //_cplusplus
-
-#endif //I2S_H

@@ -22,48 +22,10 @@
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-//i2s.h
-#ifndef I2S_H
-#define I2S_H
+ //hibernate.h
+ // derived from duff's lowpower modes
 
-#define I2S_TX_2CH 1
-#define I2S_RX_2CH 2
-
-#define CS5361_DEV 0
-#define SGTL5000_DEV 1
-#define AD7982_DEV 2
-
-typedef struct {
-	int nbytes;
-	int nsamp;
-	int nchan;
-} i2s_context_t ;
-
-#ifdef __cplusplus
-extern "C"{
+ #ifndef HIBERNATE_H
+ #define HIBERNATE_H
+	void hibernate(uint32_t nsec);
 #endif
-
-void i2s_init(void);
-void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync);
-void i2s_configurePorts(int iconf);
-void i2s_setupOutput(void * buffer, int ndat, int port, int prio);
-void i2s_startOutput(void);
-
-void i2s_setupInput(void * buffer, int ndat, int port, int prio);
-void i2s_startInput(void);
-void i2s_stop(void);
-
-void i2s_enableInputDMA(void);
-void i2s_enableOutputDMA(void);
-
-void i2s_DMA_setup(void);
-
-void i2sInProcessing(void * s, void * d);
-void i2sOutProcessing(void * s, void * d);
-
-
-#ifdef __cplusplus
-}
-#endif //_cplusplus
-
-#endif //I2S_H

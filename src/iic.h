@@ -27,6 +27,8 @@
 #ifndef IIC_H
 #define IIC_H
 
+#include <stdint.h>
+
 typedef	void (*I2C_FUNC)(void *,int) ;
 
 #ifdef __cplusplus

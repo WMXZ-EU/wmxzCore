@@ -31,6 +31,38 @@
 #include "dma.h"
 #include "jobs.h"
 
+#define HAVE_HW_SERIAL
+#ifdef HAVE_HW_SERIAL
+
+#include "kinetis.h"
+#include "localKinetis.h"
+#include "core_pins.h" // testing only
+
+/* some aux functions for pure c code */
+#include "usb_serial.h"
+
+#define _PUTCHAR(x) usb_serial_putchar(x)
+#define _FLUSH() usb_serial_flush_output()
+//
+void logg(char c);
+void printb(uint32_t x,uint32_t im);
+//
+void logg(char c) {_PUTCHAR(c); _FLUSH();}
+void printb(uint32_t x,uint32_t im)
+{ char c;
+  int ii;
+  for(ii=im;ii>=0;ii--)
+  { if(!((ii+1)%4)) _PUTCHAR(' ');
+    c=(x&(1<<ii))?'1':'0'; _PUTCHAR(c);
+  }
+  _PUTCHAR('\r');
+  _PUTCHAR('\n');
+  _FLUSH();
+}
+/* end aux functions */
+#endif
+
+
 int m_i2s_isMaster;
 int m_i2s_nbits;
 int m_i2s_dual;
@@ -62,10 +94,20 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 		iscl1 = nbits/cs_speed-1;
 		iscl2 = fs_scale*3*15-1;  
 		iscl3 = 4/cs_speed-1;
+		iscl1=3;
+		iscl2=50;
+		iscl3=3;	
+
 	}
 	else if(device==SGTL5000_DEV)
 	{
 		// following timings are relative 96 kHz @144 MHz
+		iscl1 = 6-1;
+		iscl2 = fs_scale*35;  
+		iscl3 = 4-1;
+	}
+	else if(device==AD7982_DEV)
+	{
 		iscl1 = 6-1;
 		iscl2 = fs_scale*35;  
 		iscl3 = 4-1;
@@ -92,6 +134,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	if(isMaster)
 	{
 		I2S0_MCR = I2S_MCR_MICS(3)  | I2S_MCR_MOE;
+		while (I2S0_MCR & I2S_MCR_DUF) ; 
 		I2S0_MDR = I2S_MDR_FRACT(iscl1) | I2S_MDR_DIVIDE(iscl2); 
 	}
 
@@ -109,7 +152,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	//
 	I2S0_TCR4 = I2S_TCR4_FRSZ(1) 
 				| I2S_TCR4_SYWD((nbits-1)) 
-				| I2S_TCR4_MF
+				| I2S_TCR4_MF 
 				| I2S_TCR4_FSE 
 				| I2S_TCR4_FSP ;
 	if(isMaster)
@@ -120,7 +163,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	// configure receiver 
 	I2S0_RMR = 0;
 	I2S0_RCR1 = I2S_RCR1_RFW(1); 
-	I2S0_RCR2 = I2S_RCR2_SYNC(sync)| I2S_RCR2_BCP ; // sync=0; rx is async; tx is sync
+	I2S0_RCR2 = I2S_RCR2_SYNC(sync) | I2S_RCR2_BCP ; // sync=0; rx is async; tx is sync
 	if(isMaster)
 		I2S0_RCR2 = (I2S_RCR2_BCD | I2S_RCR2_DIV(iscl3) | I2S_RCR2_MSEL(1));
 	//
@@ -132,7 +175,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_RCR4 = I2S_RCR4_FRSZ(1) 
 				| I2S_RCR4_SYWD((nbits-1)) 
 				| I2S_RCR4_MF
-				| I2S_RCR4_FSE 
+				| I2S_RCR4_FSE  
 				| I2S_RCR4_FSP;
 	if(isMaster)
 		I2S0_RCR4 |= I2S_RCR4_FSD;	

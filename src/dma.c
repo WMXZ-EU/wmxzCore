@@ -46,8 +46,12 @@ void DMA_init(void)
 	SIM_SCGC6 |= SIM_SCGC6_DMAMUX;
 	SIM_SCGC7 |= SIM_SCGC7_DMA;
 
-	DMA_CR = DMA_CR_HALT | DMA_CR_EMLM; // fixed priority arbitration
-	DMA_CR |= DMA_CR_ERCA; // enable round robin arbitration  // good idea?
+//	DMA_CR = DMA_CR_HALT | DMA_CR_EMLM; // fixed priority arbitration
+//	DMA_CR |= DMA_CR_ERCA; // enable round robin arbitration  // good idea?
+	DMA_CR = DMA_CR_EMLM | DMA_CR_EDBG;
+#ifdef __MK66FX1M0__
+	DMA_CR |= DMA_CR_GRP1PRI;
+#endif
 }
 
 uint32_t DMA_priority(int ch) 

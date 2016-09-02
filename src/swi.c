@@ -38,16 +38,25 @@ typedef struct
 	int count;
 } SWI_OBJ;
 
-#define SWI_MAX_NUM 5
-SWI_OBJ swis[SWI_MAX_NUM];
-
 #define INTERRUPT_OFF	{__disable_irq();}
 #define INTERRUPT_ON	{__enable_irq();}
 
 #define TRIGGER_SWI(irq, prio) {NVIC_CLEAR_PENDING(irq); NVIC_SET_PRIORITY(irq, prio); NVIC_TRIGGER_IRQ(irq);}
 
 // unused IRQ Vectors mk20dx256
+#ifdef __MK20DX256__
+#define SWI_MAX_NUM 5
+SWI_OBJ swis[SWI_MAX_NUM];
+
 int uswi[]={33,39,44, 53,54,55,56,57,58,59, 67,68,69,79,71,72, 91,92,93,94,95, 98, 102, 108,109}; // 
+#endif
+// unused IRQ Vectors mk66fx1m0
+#ifdef __MK66FX1M0__
+#define SWI_MAX_NUM 4
+SWI_OBJ swis[SWI_MAX_NUM];
+
+int uswi[]={46,71,84,85}; //
+#endif
 
 void swi_handle_ISR(int ii);
 // ISR Handlers:
@@ -103,11 +112,14 @@ int SWI_trigger(int rv, int prio)
 	return rv;
 }
 
+//#define SWI_BLOCK_INTERRUPT
 // generic SWI ISR handler
 void swi_handle_ISR(int ii)
 {
 	SWI_OBJ *swi = &swis[ii];
-    INTERRUPT_OFF // switch off interrupts
+#ifdef SWI_BLOCK_INTERRUPT
+    INTERRUPT_OFF // switch off global interrupts
+#endif
 	if(swi->job.funct)
 	{
 		if(swi->job.nice<0)
@@ -117,5 +129,7 @@ void swi_handle_ISR(int ii)
 	}
     if(swi->count >0) swi->count--;
 	if(!swi->count) swi->job.funct = 0; // mark as done
-    INTERRUPT_ON // enable interrupts
+#ifdef SWI_BLOCK_INTERRUPT
+    INTERRUPT_ON // enable global interrupts
+#endif
 }

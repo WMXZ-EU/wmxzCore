@@ -31,7 +31,7 @@
 #include "dma.h"
 #include "jobs.h"
 
-#define HAVE_HW_SERIAL
+//#define HAVE_HW_SERIAL
 #ifdef HAVE_HW_SERIAL
 
 #include "kinetis.h"
@@ -108,8 +108,8 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	}
 	else if(device==AD7982_DEV)
 	{
-		iscl1 = 6-1;
-		iscl2 = fs_scale*35;  
+		iscl1 = 2-1;
+		iscl2 = fs_scale*(F_CPU/48000000)-1;  // relative to 375 kHz @ multiple of 48 MHz
 		iscl3 = 4-1;
 	}
 	else

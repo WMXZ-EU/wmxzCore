@@ -59,7 +59,7 @@ static void llwuISR(void)
     //
 #ifdef K20
     LLWU_F3 |= LLWU_F3_MWUF5_MASK; // clear source in LLWU Flag register
-#elseif K66
+#elif defined K66
     LLWU_MF5 |= LLWU_MF5_MWUF5_MASK; // clear source in LLWU Flag register
 #endif
     //

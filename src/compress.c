@@ -26,6 +26,7 @@
 
 #include "compress.h"
 
+#ifdef xxxx
 void u3_printv(u3data_t xx, int nn)
 {	int jj; for(jj=nn-1;jj>=0;jj--) printf("%d",(xx & (u3data_t)(1<<jj))>>jj);
 }
@@ -38,7 +39,12 @@ void u3_print(u3data_t xx)
 void l3_print(l3data_t xx)
 {	int jj; for(jj=8*sizeof(l3data_t)-1;jj>=0;jj--) printf("%d",(xx & (l3data_t)(1ll<<jj))>>jj);
 }
-
+#else
+void u3_printv(u3data_t xx, int nn) {}
+void x3_print(x3data_t xx) {}
+void u3_print(u3data_t xx) {}
+void l3_print(l3data_t xx) {}
+#endif
 int encode(u3data_t *out, x3data_t *inp, int nn, int ich, int nch)
 {	int ii,nb;
 	u3data_t ma=0;

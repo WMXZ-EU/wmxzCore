@@ -29,7 +29,8 @@
 #include "i2s.h"
 
 #include "dma.h"
-#include "jobs.h"
+//#include "jobs.h"
+
 
 //#define HAVE_HW_SERIAL
 #ifdef HAVE_HW_SERIAL
@@ -69,6 +70,9 @@ int m_i2s_dual;
 
 void i2s_init(void)
 {	SIM_SCGC6 |= SIM_SCGC6_I2S;
+#ifdef USE_I2S_PIN
+	pinMode(I2S_PIN,OUTPUT);
+#endif
 }
 
 void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync)
@@ -78,7 +82,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 //  MCLK= MCGPLLCLK*(iscl1+1)/(iscl2+1)
 //	BCLK= MCLK/2/(iscl3+1)/32; // division by 32 is to have 32 bits within frame sync (BCLK)
 //
-	int iscl1,iscl2,iscl3;
+	int iscl1,iscl2,iscl3, mcr_src =3;
 	if(device==CS5361_DEV)
 	{
 		// adjust speeds to requirements by cs5361
@@ -106,11 +110,37 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 		iscl2 = fs_scale*35;  
 		iscl3 = 4-1;
 	}
-	else if(device==AD7982_DEV)
+	else if((device==AD7982_DEV) || (device==ADS8881_DEV))
 	{
+#if F_CPU == 240000000
+		iscl1 = 1-1;
+		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+#elif F_CPU == 216000000
 		iscl1 = 2-1;
-		iscl2 = fs_scale*(F_CPU/48000000)-1;  // relative to 375 kHz @ multiple of 48 MHz
-		iscl3 = 4-1;
+		iscl2 = fs_scale*9-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+		mcr_src=0;
+#elif F_CPU == 180000000
+		iscl1 = 4-1;
+		iscl2 = fs_scale*15-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+		mcr_src=0;
+#elif F_CPU == 120000000
+		iscl1 = 2-1;
+		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+#elif F_CPU == 96000000
+		iscl1 = 1-1;
+		iscl2 = fs_scale*2-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+#elif F_CPU == 60000000
+		iscl1 = 4-1;
+		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
+		iscl3 = 2-1;
+#else
+//#error "only F_CPU 240, 216, 180, 120, 96, 60 MHz"
+#endif
 	}
 	else
 	{ // 44.1 kHz @ 144 MHz //CMIS fft (OK) OK with for processing
@@ -133,7 +163,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	// enable MCLK output
 	if(isMaster)
 	{
-		I2S0_MCR = I2S_MCR_MICS(3)  | I2S_MCR_MOE;
+		I2S0_MCR = I2S_MCR_MICS(mcr_src)  | I2S_MCR_MOE;
 		while (I2S0_MCR & I2S_MCR_DUF) ; 
 		I2S0_MDR = I2S_MDR_FRACT(iscl1) | I2S_MDR_DIVIDE(iscl2); 
 	}
@@ -145,7 +175,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	if(isMaster)
 		I2S0_TCR2 |= (I2S_TCR2_BCD | I2S_TCR2_DIV(iscl3) | I2S_TCR2_MSEL(1));
 	//
-	if(dual&2)
+	if(dual & I2S_TX_2CH)
 		I2S0_TCR3 = I2S_TCR3_TCE_2CH; // dual tx channel
 	else
 		I2S0_TCR3 = I2S_TCR3_TCE; // single tx channel
@@ -163,11 +193,11 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	// configure receiver 
 	I2S0_RMR = 0;
 	I2S0_RCR1 = I2S_RCR1_RFW(1); 
-	I2S0_RCR2 = I2S_RCR2_SYNC(sync) | I2S_RCR2_BCP ; // sync=0; rx is async; tx is sync
+	I2S0_RCR2 = I2S_RCR2_SYNC(sync);// | I2S_RCR2_BCP ; // sync=0; rx is async; tx is sync
 	if(isMaster)
 		I2S0_RCR2 = (I2S_RCR2_BCD | I2S_RCR2_DIV(iscl3) | I2S_RCR2_MSEL(1));
 	//
-	if(dual&1)
+	if(dual & I2S_RX_2CH)
 		I2S0_RCR3 = I2S_RCR3_RCE_2CH; // dual rx channel
 	else
 		I2S0_RCR3 = I2S_RCR3_RCE; // single rx channel
@@ -175,8 +205,9 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_RCR4 = I2S_RCR4_FRSZ(1) 
 				| I2S_RCR4_SYWD((nbits-1)) 
 				| I2S_RCR4_MF
-				| I2S_RCR4_FSE  
-				| I2S_RCR4_FSP;
+//				| I2S_RCR4_FSE	// frame sync early
+				| I2S_RCR4_FSP	// sample at active low
+				;
 	if(isMaster)
 		I2S0_RCR4 |= I2S_RCR4_FSD;	
 
@@ -198,7 +229,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 //      27      I2S0_RX_BCLK                        (also on 11)
 //      28      I2S0_MCLK                           (also on 11)
 //      29      I2S0_RX_FS                          (also on 12)
-//      30      I2S0_RX_RDR1
+//      30/38   I2S0_RX_RDR1
 //      32      I2S0_TX_BCLK                        (also on 9, 24)
 
 /*	Configurations
@@ -208,7 +239,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_RX_BCLK:	pin11(4)	pin27(4)
 	I2S0_RX_FS;		pin12(4)	pin29(4)
 	I2S0_RDR0:		Pin13(4)
-	I2S0_RDR1:		Pin30(4)
+	I2S0_RDR1:		Pin30/38(4)
 
 	I2S0_TX_FS;								pin23(6)
 	I2S0_TX_BCLK:							pin9(6)
@@ -224,19 +255,32 @@ void i2s_configurePorts(int iconf)
 		CORE_PIN11_CONFIG = PORT_PCR_MUX(6); // pin 11, PTC6, I2S0_MCLK
 		CORE_PIN23_CONFIG = PORT_PCR_MUX(6); // pin 23, PTC2, I2S0_TX_FS
 		CORE_PIN13_CONFIG = PORT_PCR_MUX(4); // pin 13, PTC5, I2S0_RXD0
+#ifdef __MK20DX256__
 		CORE_PIN30_CONFIG = PORT_PCR_MUX(4); // pin 30, PTC11,I2S0_RXD1
+#endif
+#ifdef __MK66FX1M0__
+		CORE_PIN38_CONFIG = PORT_PCR_MUX(4); // pin 38, PTC11,I2S0_RXD1
+#endif
 	}
 	else if(iconf==2) // pure rx system no MCLK
 	{
 		CORE_PIN11_CONFIG = PORT_PCR_MUX(4); // pin 11, PTC6, I2S0_RX_BCLK
 		CORE_PIN12_CONFIG = PORT_PCR_MUX(4); // pin 12, PTC7, I2S0_RX_FS
 		CORE_PIN13_CONFIG = PORT_PCR_MUX(4); // pin 13, PTC5, I2S0_RXD0
+#ifdef __MK20DX256__
 		CORE_PIN30_CONFIG = PORT_PCR_MUX(4); // pin 30, PTC11,I2S0_RXD1
+#endif
+#ifdef __MK66FX1M0__
+		CORE_PIN38_CONFIG = PORT_PCR_MUX(4); // pin 38, PTC11,I2S0_RXD1
+#endif
+
 	}
 }
 
-extern void i2sInProcessing(void * s, void * d)  __attribute__ ((weak));
-extern void i2sOutProcessing(void * s, void * d) __attribute__ ((weak));
+static void i2sDefaultRxIsr(void *s, void *d){}
+static void i2sDefaultTxIsr(void *s, void *d){}
+void i2sInProcessing(void * s, void * d)  __attribute__ ((weak, alias("i2sDefaultRxIsr")));
+void i2sOutProcessing(void * s, void * d) __attribute__ ((weak, alias("i2sDefaultTxIsr")));
 
 void m_i2s_tx_isr(void);
 void m_i2s_rx_isr(void);
@@ -266,14 +310,14 @@ void i2s_setupOutput(void * buffer, int ndat, int port, int prio)
 	{
 		DMA_sourceBuffer_2ch(DMA_TX, buffer, ndat/2, m_i2s_nbits/8);
 		DMA_destination_2ch(DMA_TX, (uint32_t *)&I2S0_TDR0, m_i2s_nbits/8);
-		m_i2s_txContext.nsamp=ndat/2/4;
+		m_i2s_txContext.nsamp=ndat/2/4;	// half buffer / 4-chan
 		m_i2s_txContext.nchan=4;
 	}
 	else
 	{
 		DMA_sourceBuffer(DMA_TX, buffer, ndat, m_i2s_nbits/8);
 		DMA_destination(DMA_TX, (uint32_t *)&I2S0_TDR0, m_i2s_nbits/8);
-		m_i2s_txContext.nsamp=ndat/2/2;
+		m_i2s_txContext.nsamp=ndat/2/2;	// half buffer / 2-chan
 		m_i2s_txContext.nchan=2;
 	}
 	//
@@ -289,7 +333,8 @@ void i2s_setupOutput(void * buffer, int ndat, int port, int prio)
 //void logg(char c){	usb_serial_putchar(c);	usb_serial_flush_output();}
 
 void i2s_setupInput(void * buffer, int ndat, int port, int prio)
-{	// if receiver is enabled, do nothing
+{	// ndat is number of words in (dual) input buffer
+	// if receiver is enabled, do nothing
 	if (I2S0_RCSR & I2S_RCSR_RE) return;
 	
 	m_i2s_rx_buffer=buffer;
@@ -303,13 +348,13 @@ void i2s_setupInput(void * buffer, int ndat, int port, int prio)
 	if(m_i2s_dual & I2S_RX_2CH)
 	{ 	DMA_source_2ch(DMA_RX, (uint32_t *)&I2S0_RDR0, m_i2s_nbits/8);
 		DMA_destinationBuffer_2ch(DMA_RX, buffer, ndat/2, m_i2s_nbits/8);
-		m_i2s_rxContext.nsamp=ndat/2/4;
+		m_i2s_rxContext.nsamp=ndat/2/4; // half buffer/ 4-chan
 		m_i2s_rxContext.nchan=4;
 	}
 	else
 	{ 	DMA_source(DMA_RX, (uint32_t *)&I2S0_RDR0, m_i2s_nbits/8);
 		DMA_destinationBuffer(DMA_RX, buffer, ndat, m_i2s_nbits/8);
-		m_i2s_rxContext.nsamp=ndat/2/2;
+		m_i2s_rxContext.nsamp=ndat/2/2;	// half buffer / 2-chan
 		m_i2s_rxContext.nchan=2;
 	}
 	//
@@ -353,20 +398,18 @@ void i2s_enableOutputDMA(void)
 void m_i2s_tx_isr(void)
 {	uint32_t saddr, taddr;
 
-	saddr = (uint32_t) DMA_sourceAddress(DMA_TX);
 	DMA_clearInterrupt(DMA_TX);
+	saddr = (uint32_t) DMA_sourceAddress(DMA_TX);
 	//
 	if (saddr < (uint32_t)(&m_i2s_tx_buffer[m_i2s_tx_nbyte/2])) 
 	{
 		// DMA is sending from the first half of the buffer
-//		digitalWriteFast(21, HIGH);
 		// need to load data to the second half
 		taddr=(uint32_t) &m_i2s_tx_buffer[m_i2s_tx_nbyte/2];
 	} 
 	else 
 	{
 		// DMA is sending from the second half of the buffer
-//		digitalWriteFast(21, LOW);
 		// need to load data to the first half
 		taddr=(uint32_t) &m_i2s_tx_buffer[0];
 	}
@@ -374,32 +417,44 @@ void m_i2s_tx_isr(void)
 	i2sOutProcessing((void *) &m_i2s_txContext,(void *) taddr);
 }
 
+uint32_t i2sDma_getRxError(void) { return *DMA_RX->ES;}
+
+volatile uint32_t rxCount = 0;
 void m_i2s_rx_isr(void)
 {	uint32_t daddr, taddr;
 	//
-	daddr = (uint32_t) DMA_destinationAddress(DMA_RX);
+	rxCount++;
+	__disable_irq();
 	DMA_clearInterrupt(DMA_RX);
+	daddr = (uint32_t) DMA_destinationAddress(DMA_RX);
 	//
 	if (daddr < (uint32_t)(&m_i2s_rx_buffer[m_i2s_rx_nbyte/2])) 
 	{
 		// DMA is receiving to the first half of the buffer
-		digitalWriteFast(20, HIGH);
+#ifdef USE_I2S_PIN
+		digitalWriteFast(I2S_PIN, HIGH);
+#endif
 		// need to process data from the second half
 		taddr=(uint32_t) &m_i2s_rx_buffer[m_i2s_rx_nbyte/2];
 	} 
 	else 
 	{
 		// DMA is receiving to the second half of the buffer
-		digitalWriteFast(20, LOW);
+#ifdef USE_I2S_PIN
+		digitalWriteFast(I2S_PIN, LOW);
+#endif
 		// need to process data from the first half
 		taddr=(uint32_t) &m_i2s_rx_buffer[0];
 	}
 	//
+	// for debugging uncomment next 4 lines
 //	*(uint32_t*)(taddr+0)  = (uint32_t) &m_i2s_rx_buffer[0];
 //	*(uint32_t*)(taddr+4)  = (uint32_t) &m_i2s_rx_buffer[m_i2s_rx_nbyte/2];
 //	*(uint32_t*)(taddr+8)  = (uint32_t) &m_i2s_rx_buffer[m_i2s_rx_nbyte];
 //	*(uint32_t*)(taddr+12)  = taddr;
 	//
-	//i2sInProcessing((void *) &m_i2s_rxContext,(void *) taddr);
-	JOB_add((Fxn_t) i2sInProcessing, (void *) &m_i2s_rxContext,(void *) taddr,-1);
+	i2sInProcessing((void *) &m_i2s_rxContext,(void *) taddr);
+	//JOB_add((Fxn_t) i2sInProcessing, (void *) &m_i2s_rxContext,(void *) taddr,-1);
+	__enable_irq();
 }
+

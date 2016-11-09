@@ -34,6 +34,7 @@ extern "C"{
 
 void SWI_init(void); 
 int SWI_add(Fxn_t funct, Ptr state, Ptr data, int nice, int count) ; 
+int SWI_setBuffer(int rv, Ptr state, Ptr data) ;
 int SWI_trigger(int rv, int prio) ;  
 
 #ifdef __cplusplus

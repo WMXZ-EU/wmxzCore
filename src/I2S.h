@@ -29,9 +29,13 @@
 #define I2S_TX_2CH 1
 #define I2S_RX_2CH 2
 
-#define CS5361_DEV 0
-#define SGTL5000_DEV 1
-#define AD7982_DEV 2
+#define CS5361_DEV		0
+#define SGTL5000_DEV	1
+#define AD7982_DEV		2
+#define ADS8881_DEV		3
+
+#define USE_I2S_PIN
+#define I2S_PIN (2)
 
 typedef struct {
 	int nbytes;

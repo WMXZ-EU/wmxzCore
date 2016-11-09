@@ -64,6 +64,11 @@ void IIC_setup(int alt) // inspired by TwoWire
 	// I2C0_F = 0x1C; // 389 kHz
 	// I2C0_F = 0x0E; // 1 MHz
 	I2C0_FLT = 4;
+#elif F_BUS == 54000000
+	I2C0_F = 0x2B;	// 109 kHz
+	// I2C0_F = 0x1C; // 389 kHz
+	// I2C0_F = 0x0E; // 1 MHz
+	I2C0_FLT = 4;
 #elif F_BUS == 48000000
 	// I2C0_F = 0x27;	// 100 kHz
 	I2C0_F = 0x1A; // (112)  428 kHz
@@ -101,7 +106,7 @@ void IIC_setup(int alt) // inspired by TwoWire
 	I2C0_F = 0x00; // 100 kHz
 	I2C0_FLT = 1;
 #else
-#error "F_BUS must be 60, 56, 48, 40, 36, 24, 16, 8, 4 or 2 MHz"
+#error "F_BUS must be 60, 56, 54, 48, 40, 36, 24, 16, 8, 4 or 2 MHz"
 #endif
 	I2C0_C2 = I2C_C2_HDRS;
 	I2C0_C1 = I2C_C1_IICEN;

@@ -136,6 +136,7 @@ typedef struct
 
 typedef struct
 {	DMA_TCD *TCD;
+	uint32_t *ES;
 	int channel;
 	int prio;
 } DMA_STRUCT;

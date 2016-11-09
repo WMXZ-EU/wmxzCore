@@ -92,8 +92,25 @@ int SWI_add(Fxn_t funct, Ptr state, Ptr data, int nice, int count)
 				break;
 			}
 		}
-        if(rv<SWI_MAX_NUM) return rv; else return -1; // -1 means too many actve SWIs
+        if(rv<SWI_MAX_NUM) return rv; else return -1; // -1 means too many active SWIs
 }
+
+int SWI_setBuffer(int rv, Ptr state, Ptr data)
+{
+	if(rv<0) return rv;
+	{	SWI_OBJ *swi = &swis[rv];
+		if(swi->job.funct)
+		{
+			swi->job.state=state;
+			swi->job.data=data;
+		}
+		else
+			rv=-1;
+	}
+	return rv;
+}
+
+
 // kinetis.h
 // only T3.1(2)
 // 0 = highest priority
@@ -104,7 +121,7 @@ int SWI_trigger(int rv, int prio)
     INTERRUPT_OFF
 	{	SWI_OBJ *swi = &swis[rv];
 		if(swi->job.funct)
-			TRIGGER_SWI(swi->irq,prio) // do here the real triggering
+			TRIGGER_SWI(swi->irq,prio*16) // do here the real triggering
 		else
 			rv=-1;
 	}

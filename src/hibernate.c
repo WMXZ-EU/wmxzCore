@@ -97,15 +97,19 @@ void llwuSetup(void)
     PORTB_PCR2 = PORT_PCR_MUX(0);
     PORTB_PCR3 = PORT_PCR_MUX(0);
 }
+
 /********************* go to deep sleep *********************/
 #define SMC_PMPROT_AVLLS_MASK   0x2u
 #define SMC_PMCTRL_STOPM_MASK   0x7u
 #define SCB_SCR_SLEEPDEEP_MASK  0x4u
 
-#define VLLS3 0x3
-#define VLLS2 0x2
-#define VLLS1 0x1
+// see SMC section (e.g. p 339 of K66) 
+#define VLLS3 0x3	// RAM retained I/O states held
+#define VLLS2 0x2	// RAM partially retained
+#define VLLS1 0x1	// I/O states help
+#define VLLS0 0x0	// all stop
 
+#define VLLS_MODE VLLS0
 void gotoSleep(void)
 {  
 //	/* Make sure clock monitor is off so we don't get spurious reset */
@@ -117,7 +121,7 @@ void gotoSleep(void)
    SMC_PMCTRL &= ~SMC_PMCTRL_STOPM_MASK;
    SMC_PMCTRL |= SMC_PMCTRL_STOPM(0x4); // VLLSx
 
-   SMC_VLLSCTRL =  SMC_VLLSCTRL_VLLSM(VLLS1); // VLLS3
+   SMC_VLLSCTRL =  SMC_VLLSCTRL_VLLSM(VLLS_MODE);
    /*wait for write to complete to SMC before stopping core */
    (void) SMC_PMCTRL;
 

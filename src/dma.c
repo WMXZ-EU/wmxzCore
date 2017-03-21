@@ -66,7 +66,7 @@ static int DMA_getChannel(int prio)
 	//find proper DMA according to its default priority (0 is lowest 15 is highest priority)
 	ch= 4*(prio/4)+(3-(prio %4));
 	
-	//check if allready allocated
+	//check if already allocated
 	if(((dma_channel_allocated_mask & (1<<ch)))) 
 		return -1; //no channel found
 	else
@@ -301,7 +301,7 @@ void *DMA_destinationAddress(DMA_STRUCT *dma)
 void DMA_triggerAtHardwareEvent(DMA_STRUCT *dma, uint8_t source) 
 {
 	volatile uint8_t *mux;
-	mux = (volatile uint8_t *)&(DMAMUX0_CHCFG0) + dma->channel;
+	mux = (volatile uint8_t *)&(DMAMUX0_CHCFG0) + dma->channel;  // on T3.6 are 32 DMA entries
 	*mux = 0;
 	*mux = (source & 63) | DMAMUX_ENABLE;
 }
@@ -309,18 +309,18 @@ void DMA_triggerAtHardwareEvent(DMA_STRUCT *dma, uint8_t source)
 //=====================================================================================	
 void DMA_attachInterrupt(DMA_STRUCT *dma, void (*isr)(void)) 
 {
-	_VectorsRam[dma->channel + IRQ_DMA_CH0 + 16] = isr;
-	NVIC_ENABLE_IRQ(IRQ_DMA_CH0 + dma->channel);
+	_VectorsRam[IRQ_DMA_CH0 + 16 + dma->channel % 16] = isr;	// on T3.6 are only 16 interrupt slots
+	NVIC_ENABLE_IRQ(IRQ_DMA_CH0 + dma->channel % 16);
 }
 
 void DMA_detachInterrupt(DMA_STRUCT *dma) 
 {
-	NVIC_DISABLE_IRQ(IRQ_DMA_CH0 + dma->channel);
+	NVIC_DISABLE_IRQ(IRQ_DMA_CH0 + dma->channel % 16);
 }
 
 void DMA_clearInterrupt(DMA_STRUCT *dma) 
 {
-	DMA_CINT = dma->channel;
+	DMA_CINT = dma->channel;	// on T3.6 CINT has 32 entries
 }
 
 /*****************************************************************************************/

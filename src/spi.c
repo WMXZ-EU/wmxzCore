@@ -158,9 +158,17 @@ void spi_configPorts(int iconf)
 	}
 }
 
-//#define DO_DEBUG1
+//#define DO_DEBUG
 uint32_t spi_setup(int16_t port, int div)
 {	int ii;
+
+	if(port==0)
+	    SIM_SCGC6 |= SIM_SCGC6_SPI0;
+	else if(port==1)
+	    SIM_SCGC6 |= SIM_SCGC6_SPI1;
+	else if(port==2)
+	    SIM_SCGC3 |= SIM_SCGC3_SPI2;
+
 	
 	//spi SETUP	
 	SPI[port]->MCR =	SPI_MCR_HALT |   // stop transfer
@@ -170,10 +178,18 @@ uint32_t spi_setup(int16_t port, int div)
 					SPI_MCR_MSTR;
 
 //	uint32_t ctar = SPI_CLOCK | SPI_CTAR_BR(sp) | SPI_CTAR_CSSCK(sp?sp-1:0) | SPI_CTAR_FMSZ(7);
-	for(ii=0; ii<23 && div > ctarTabo[ii].div; ii++) ;
+	for(ii=0; (ii<23) && (div > ctarTabo[ii].div); ii++)
+	{
 	#ifdef DO_DEBUG
 		static char text[80]; 
-		sprintf(text,"%d %d %d\n\r",div,ii,ctarTab[ii].div); 
+		sprintf(text,"%d %d %d\n\r",div,ii,ctarTabo[ii].div);
+		usb_serial_write(text,80);
+	#endif
+	}
+
+	#ifdef DO_DEBUG
+		static char text[80];
+		sprintf(text,"%d %d %d\n\r",div,ii,ctarTabo[ii].div);
 		usb_serial_write(text,80);
 	#endif
 

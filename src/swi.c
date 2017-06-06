@@ -46,18 +46,17 @@ typedef struct
 // unused IRQ Vectors mk20dx256
 #ifdef __MK20DX256__
 #define SWI_MAX_NUM 5
-SWI_OBJ swis[SWI_MAX_NUM];
-
-int uswi[]={33,39,44, 53,54,55,56,57,58,59, 67,68,69,79,71,72, 91,92,93,94,95, 98, 102, 108,109}; // 
+	int uswi[]={33,39,44, 53,54,55,56,57,58,59, 67,68,69,79,71,72, 91,92,93,94,95, 98, 102, 108,109}; // 
 #endif
 // unused IRQ Vectors mk66fx1m0
 #ifdef __MK66FX1M0__
 #define SWI_MAX_NUM 4
-SWI_OBJ swis[SWI_MAX_NUM];
-
-int uswi[]={46,71,84,85}; //
+	int uswi[]={46,71,84,85}; //
 #endif
 
+SWI_OBJ swis[SWI_MAX_NUM];
+
+// swi dispatcher
 void swi_handle_ISR(int ii);
 // ISR Handlers:
 void unused_swi() {;}
@@ -67,7 +66,7 @@ void SWI_2(void) {	swi_handle_ISR(2);}
 void SWI_3(void) {	swi_handle_ISR(3);}
 void SWI_4(void) {	swi_handle_ISR(4);}
 
-// list of Interrupt service routines < SWI_MAX_NUM entries and to be defined below
+// list of Interrupt service routines <= SWI_MAX_NUM entries and to be defined below
 void (* const SWIS[])(void) ={SWI_0, SWI_1, SWI_2, SWI_3, SWI_4};
 
 void SWI_init(void)

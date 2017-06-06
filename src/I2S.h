@@ -23,19 +23,25 @@
  * SOFTWARE.
  */
 //i2s.h
+// 20-may-17: added ICS43432
+
 #ifndef I2S_H
 #define I2S_H
 
 #define I2S_TX_2CH 1
 #define I2S_RX_2CH 2
 
-#define CS5361_DEV		0
+#define PJRC_AUDIO_DEV	0
 #define SGTL5000_DEV	1
-#define AD7982_DEV		2
-#define ADS8881_DEV		3
+#define CS5361_DEV		2
+#define AD7982_DEV		3
+#define ADS8881_DEV		4
+#define ICS43432_DEV	5
 
 #define USE_I2S_PIN
-#define I2S_PIN (2)
+#ifndef I2S_PIN
+	#define I2S_PIN (6)
+#endif
 
 typedef struct {
 	int nbytes;
@@ -48,7 +54,8 @@ extern "C"{
 #endif
 
 void i2s_init(void);
-void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync);
+float i2s_speedConfig(int device, int nbits, int fs);
+void i2s_config(int isMaster, int nbits, int dual, int sync);
 void i2s_configurePorts(int iconf);
 void i2s_setupOutput(void * buffer, int ndat, int port, int prio);
 void i2s_startOutput(void);
@@ -60,14 +67,34 @@ void i2s_stop(void);
 void i2s_enableInputDMA(void);
 void i2s_enableOutputDMA(void);
 
-void i2s_DMA_setup(void);
-
 void i2sInProcessing(void * s, void * d);
 void i2sOutProcessing(void * s, void * d);
 
 
 #ifdef __cplusplus
 }
+
+class C_I2S
+{
+public:
+	void init(void) {i2s_init();}
+	float i2s_speedConfig(int device, int nbits, int fs) {i2s_speedConfig(device, nbits, fs);}
+	void i2s_config(int isMaster, int nbits, int dual, int sync) {i2s_config(isMaster, nbits, dual, sync)};
+	void i2s_configurePorts(int iconf) {i2s_configurePorts(iconf)} 
+
+	void i2s_setupOutput(void * buffer, int ndat, int port, int prio) {	i2s_setupOutput(buffer, ndat, port, prio);} 
+	void i2s_startOutput(void) { i2s_startOutput();}
+
+	void i2s_setupInput(void * buffer, int ndat, int port, int prio) { i2s_setupInput(buffer, ndat, port, prio);}
+	void i2s_startInput(void) { i2s_startInput();}
+	void i2s_stop(void) { i2s_stop();}
+
+	void i2s_enableInputDMA(void) { i2s_enableInputDMA(); }
+	void i2s_enableOutputDMA(void) { i2s_enableOutputDMA(); }
+
+};
+
+C_I2S i2s;
 #endif //_cplusplus
 
 #endif //I2S_H

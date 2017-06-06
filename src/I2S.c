@@ -23,21 +23,19 @@
  * SOFTWARE.
  */
 //i2s.c
+// 20-may-17: added ICS43432
+// 04-jun-17: modified speed parameter estimation
+
 #include "kinetis.h"
 #include "core_pins.h"
 
 #include "i2s.h"
-
 #include "dma.h"
-//#include "jobs.h"
-
 
 //#define HAVE_HW_SERIAL
 #ifdef HAVE_HW_SERIAL
 
-#include "kinetis.h"
 #include "localKinetis.h"
-#include "core_pins.h" // testing only
 
 /* some aux functions for pure c code */
 #include "usb_serial.h"
@@ -75,79 +73,113 @@ void i2s_init(void)
 #endif
 }
 
-void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int sync)
+int iscl[3];
+
+#define NPRIMES 46
+int64_t primes[NPRIMES]={2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 
+					31, 37, 41, 43, 47, 53, 59, 61,	67, 71, 
+					73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
+					127, 131, 137, 139, 149, 151, 157, 163, 167, 173,
+					179, 181, 191, 193, 197, 199};
+
+float i2s_speedConfig(int device, int nbits, int fs)
 {
 // rules to generate click dividers
 //  MCGPLLCLK=F_CPU // is set by _MICS(3)
-//  MCLK= MCGPLLCLK*(iscl1+1)/(iscl2+1)
-//	BCLK= MCLK/2/(iscl3+1)/32; // division by 32 is to have 32 bits within frame sync (BCLK)
+//  MCLK = MCGPLLCLK*(iscl1+1)/(iscl2+1)
+//	BCLK = MCLK/2/(iscl3+1)
+//  LRCLK = BCLK/(2*nbits); // division by  is to have 32 bits within frame sync (BCLK)
 //
-	int iscl1,iscl2,iscl3, mcr_src =3;
-	if(device==CS5361_DEV)
+	int ii;
+	int64_t i1,i2,i3;
+	//
+	if((device==SGTL5000_DEV) || (device==PJRC_AUDIO_DEV) || (device==CS5361_DEV))
 	{
-		// adjust speeds to requirements by cs5361
-		int cs_speed=1;
-		if(fs_scale>3)
-			cs_speed=1;		// fs < 54 kHz
-		else if(fs_scale>1)
-			cs_speed=2;		// fs > 50 kHz & fs < 104 kHz
-		else
-			cs_speed=4;  	// fs >100 kHz % fs < 204 kHz
-		
-		// following timings are relative 200 kHz @144 MHz
-		iscl1 = nbits/cs_speed-1;
-		iscl2 = fs_scale*3*15-1;  
-		iscl3 = 4/cs_speed-1;
-		iscl1=3;
-		iscl2=50;
-		iscl3=3;	
+		int64_t nov;
+		if (device==PJRC_AUDIO_DEV) 
+		{	nov=256;
+			nbits=12;
+			fs=44100; // is fixed in Audio tool
+		}
 
+		else if (device==SGTL5000_DEV)
+		{	nov=512;
+			if(fs>48000) nov=256;
+		}
+
+		else if (device==CS5361_DEV)
+		{   nbits = 32; 
+			int64_t sc = 96000/fs;
+			if(sc>2) sc=2;
+			nov=256<<sc;
+		}			
+		
+		// find reference frequency for rounding
+		int64_t fref = 1000000; // start with 1 MHz
+		while( (((fref/fs) % 8)>0) &&  (fref < F_CPU)) fref+= 1000000; 
+		int64_t scl = fref/fs; // should now be multiple of 8
+		//
+		// find first multiplier
+		int64_t bitRate = fref*nov;
+		int64_t scale0 = F_CPU*scl;
+		
+		for(i1=1; i1<256;i1++) if ((scale0*i1 % bitRate)==0) break;
+		if(i1==256) return 0.0f; // failed to find multiplier
+		
+		i2=scale0*i1 / bitRate;
+		i3 = nov / (4*nbits);
+		
+		iscl[0] = (int) (i1-1);
+		iscl[1] = (int) (i2-1);
+		iscl[2] = (int) (i3-1);
 	}
-	else if(device==SGTL5000_DEV)
-	{
-		// following timings are relative 96 kHz @144 MHz
-		iscl1 = 6-1;
-		iscl2 = fs_scale*35;  
-		iscl3 = 4-1;
+	
+	else
+  {   // find first multiplier
+	int64_t bitRate = 2l*nbits*fs;
+	int64_t scale0 = F_CPU/2;
+
+	i1=1;
+	while(scale0*i1 % bitRate) { i1++; if(i1==256) break;}
+	//
+	if(i1==256) return 0.0f; // failed to find multiplier
+
+	int64_t scale1=scale0*i1/bitRate;
+	i2=1;
+	i3=1;
+	while(1)
+	{ 	for(ii=0;ii<NPRIMES;ii++)
+			if ((scale1 % primes[ii])==0) { i2 *= primes[ii]; scale1/=primes[ii]; break; }
+		if( scale1<=1) break;
+		for(ii=0;ii<NPRIMES;ii++)
+			if ((scale1 % primes[ii])==0) { i3 *= primes[ii]; scale1/=primes[ii]; break; }
+		if( scale1<=1) break;
 	}
-	else if((device==AD7982_DEV) || (device==ADS8881_DEV))
+
+	iscl[0]= (int) (i1-1);
+	if(i2>i3) // take larger divider first
 	{
-#if F_CPU == 240000000
-		iscl1 = 1-1;
-		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-#elif F_CPU == 216000000
-		iscl1 = 2-1;
-		iscl2 = fs_scale*9-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-		mcr_src=0;
-#elif F_CPU == 180000000
-		iscl1 = 4-1;
-		iscl2 = fs_scale*15-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-		mcr_src=0;
-#elif F_CPU == 120000000
-		iscl1 = 2-1;
-		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-#elif F_CPU == 96000000
-		iscl1 = 1-1;
-		iscl2 = fs_scale*2-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-#elif F_CPU == 60000000
-		iscl1 = 4-1;
-		iscl2 = fs_scale*5-1;  // fs_scale relative to 375 kHz
-		iscl3 = 2-1;
-#else
-//#error "only F_CPU 240, 216, 180, 120, 96, 60 MHz"
-#endif
+		iscl[1] = (int) (i2-1);
+		iscl[2] = (int) (i3-1);
 	}
 	else
-	{ // 44.1 kHz @ 144 MHz //CMIS fft (OK) OK with for processing
-		iscl1=3;
-		iscl2=50;
-		iscl3=3;	
+	{
+		iscl[1] = (int) (i3-1);
+		iscl[2] = (int) (i2-1);
 	}
+
+	}
+	return F_CPU * (float)(i1) / (float)(i2) / 2.0f / (float)(i3) / (float)(2*nbits); // is sampling frequency
+}
+
+void i2s_config(int isMaster, int nbits, int dual, int sync)
+{
+	int mcr_src;
+#if defined(__MK20DX256__)
+		mcr_src=3;
+#elif defined(__MK66FX1M0__)
+		mcr_src=0;
+#endif
 
 	// if either transmitter or receiver is enabled, do nothing
 	if (I2S0_TCSR & I2S_TCSR_TE) return;
@@ -165,7 +197,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	{
 		I2S0_MCR = I2S_MCR_MICS(mcr_src)  | I2S_MCR_MOE;
 		while (I2S0_MCR & I2S_MCR_DUF) ; 
-		I2S0_MDR = I2S_MDR_FRACT(iscl1) | I2S_MDR_DIVIDE(iscl2); 
+		I2S0_MDR = I2S_MDR_FRACT(iscl[0]) | I2S_MDR_DIVIDE(iscl[1]); 
 	}
 
 	// configure transmitter
@@ -173,7 +205,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_TCR1 = I2S_TCR1_TFW(1);  // watermark at half fifo size
 	I2S0_TCR2 = I2S_TCR2_SYNC((1-sync)) | I2S_TCR2_BCP ; // sync=1; tx is async; rx = sync
 	if(isMaster)
-		I2S0_TCR2 |= (I2S_TCR2_BCD | I2S_TCR2_DIV(iscl3) | I2S_TCR2_MSEL(1));
+		I2S0_TCR2 |= (I2S_TCR2_BCD | I2S_TCR2_DIV(iscl[2]) | I2S_TCR2_MSEL(1));
 	//
 	if(dual & I2S_TX_2CH)
 		I2S0_TCR3 = I2S_TCR3_TCE_2CH; // dual tx channel
@@ -195,7 +227,7 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_RCR1 = I2S_RCR1_RFW(1); 
 	I2S0_RCR2 = I2S_RCR2_SYNC(sync);// | I2S_RCR2_BCP ; // sync=0; rx is async; tx is sync
 	if(isMaster)
-		I2S0_RCR2 = (I2S_RCR2_BCD | I2S_RCR2_DIV(iscl3) | I2S_RCR2_MSEL(1));
+		I2S0_RCR2 = (I2S_RCR2_BCD | I2S_RCR2_DIV(iscl[2]) | I2S_RCR2_MSEL(1));
 	//
 	if(dual & I2S_RX_2CH)
 		I2S0_RCR3 = I2S_RCR3_RCE_2CH; // dual rx channel
@@ -205,13 +237,14 @@ void i2s_config(int device, int isMaster, int nbits, int fs_scale, int dual, int
 	I2S0_RCR4 = I2S_RCR4_FRSZ(1) 
 				| I2S_RCR4_SYWD((nbits-1)) 
 				| I2S_RCR4_MF
-//				| I2S_RCR4_FSE	// frame sync early
+				| I2S_RCR4_FSE	// frame sync early
 				| I2S_RCR4_FSP	// sample at active low
 				;
 	if(isMaster)
 		I2S0_RCR4 |= I2S_RCR4_FSD;	
 
 	I2S0_RCR5 = I2S_RCR5_WNW((nbits-1)) | I2S_RCR5_W0W((nbits-1)) | I2S_RCR5_FBT((nbits-1));
+	//
 }
 
 // Pin patterns
@@ -415,6 +448,7 @@ void m_i2s_tx_isr(void)
 	}
 	//
 	i2sOutProcessing((void *) &m_i2s_txContext,(void *) taddr);
+	//JOB_add((Fxn_t) i2sOutProcessing, (void *) &m_i2s_txContext,(void *) taddr,-1);
 }
 
 uint32_t i2sDma_getRxError(void) { return *DMA_RX->ES;}
@@ -446,12 +480,6 @@ void m_i2s_rx_isr(void)
 		// need to process data from the first half
 		taddr=(uint32_t) &m_i2s_rx_buffer[0];
 	}
-	//
-	// for debugging uncomment next 4 lines
-//	*(uint32_t*)(taddr+0)  = (uint32_t) &m_i2s_rx_buffer[0];
-//	*(uint32_t*)(taddr+4)  = (uint32_t) &m_i2s_rx_buffer[m_i2s_rx_nbyte/2];
-//	*(uint32_t*)(taddr+8)  = (uint32_t) &m_i2s_rx_buffer[m_i2s_rx_nbyte];
-//	*(uint32_t*)(taddr+12)  = taddr;
 	//
 	i2sInProcessing((void *) &m_i2s_rxContext,(void *) taddr);
 	//JOB_add((Fxn_t) i2sInProcessing, (void *) &m_i2s_rxContext,(void *) taddr,-1);

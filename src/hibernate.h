@@ -24,8 +24,19 @@
  */
  //hibernate.h
  // derived from duff's lowpower modes
+ // 06-jun-17: added 'extern "C" ' statement
 
  #ifndef HIBERNATE_H
  #define HIBERNATE_H
-	void hibernate(uint32_t nsec);
+ 
+ #ifdef __cplusplus
+   extern "C" {
+ #endif
+
+ void hibernate(uint32_t nsec);
+	
+ #ifdef __cplusplus
+   }
+ #endif
+
 #endif

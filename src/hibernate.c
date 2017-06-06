@@ -24,6 +24,9 @@
  */
  //hibernate.c
  // derived from duff's lowpower modes
+ // 06-jun-17: changed some compiler directives
+ //            added high speed mode of K66
+ 
 #include "kinetis.h"
 #include "core_pins.h"
 
@@ -38,7 +41,7 @@ void rtcSetup(void)
 }
 
 void rtcSetAlarm(uint32_t nsec)
-{
+{ // set alarm nsec seconds in the future
    RTC_TAR = RTC_TSR + nsec;
    RTC_IER |= RTC_IER_TAIE_MASK;
 }
@@ -48,19 +51,13 @@ void rtcSetAlarm(uint32_t nsec)
 #define LLWU_F3_MWUF5_MASK       0x20u
 #define LLWU_MF5_MWUF5_MASK      0x20u
 
-#ifdef HAS_KINETIS_LLWU_32CH
-#define K66
-#else
-#define K20
-#endif
-
 static void llwuISR(void)
 {
     //
-#ifdef K20
-    LLWU_F3 |= LLWU_F3_MWUF5_MASK; // clear source in LLWU Flag register
-#elif defined K66
+#if defined(HAS_KINETIS_LLWU_32CH)
     LLWU_MF5 |= LLWU_MF5_MWUF5_MASK; // clear source in LLWU Flag register
+#else
+    LLWU_F3 |= LLWU_F3_MWUF5_MASK; // clear source in LLWU Flag register
 #endif
     //
     RTC_IER = 0;// clear RTC interrupts
@@ -68,23 +65,23 @@ static void llwuISR(void)
 
 void llwuSetup(void)
 {
-	attachInterruptVector( IRQ_LLWU, llwuISR );
-	NVIC_SET_PRIORITY( IRQ_LLWU, 2*16 );
+  attachInterruptVector( IRQ_LLWU, llwuISR );
+  NVIC_SET_PRIORITY( IRQ_LLWU, 2*16 );
 //
-	NVIC_CLEAR_PENDING( IRQ_LLWU );
-	NVIC_ENABLE_IRQ( IRQ_LLWU );
+  NVIC_CLEAR_PENDING( IRQ_LLWU );
+  NVIC_ENABLE_IRQ( IRQ_LLWU );
 //
-	LLWU_PE1 = 0;
-	LLWU_PE2 = 0;
-	LLWU_PE3 = 0;
-	LLWU_PE4 = 0;
-#ifdef K66
-	LLWU_PE5 = 0;
-	LLWU_PE6 = 0;
-	LLWU_PE7 = 0;
-	LLWU_PE8 = 0;
+  LLWU_PE1 = 0;
+  LLWU_PE2 = 0;
+  LLWU_PE3 = 0;
+  LLWU_PE4 = 0;
+#if defined(HAS_KINETIS_LLWU_32CH)
+  LLWU_PE5 = 0;
+  LLWU_PE6 = 0;
+  LLWU_PE7 = 0;
+  LLWU_PE8 = 0;
 #endif
-	LLWU_ME  = LLWU_ME_WUME5_MASK; //rtc alarm
+  LLWU_ME  = LLWU_ME_WUME5_MASK; //rtc alarm
 //   
     SIM_SOPT1CFG |= SIM_SOPT1CFG_USSWE;
     SIM_SOPT1 |= SIM_SOPT1_USBSSTBY;
@@ -104,17 +101,23 @@ void llwuSetup(void)
 #define SCB_SCR_SLEEPDEEP_MASK  0x4u
 
 // see SMC section (e.g. p 339 of K66) 
-#define VLLS3 0x3	// RAM retained I/O states held
-#define VLLS2 0x2	// RAM partially retained
-#define VLLS1 0x1	// I/O states help
-#define VLLS0 0x0	// all stop
+#define VLLS3 0x3 // RAM retained I/O states held
+#define VLLS2 0x2 // RAM partially retained
+#define VLLS1 0x1 // I/O states held
+#define VLLS0 0x0 // all stop
 
 #define VLLS_MODE VLLS0
 void gotoSleep(void)
 {  
-//	/* Make sure clock monitor is off so we don't get spurious reset */
+//  /* Make sure clock monitor is off so we don't get spurious reset */
 //   MCG_C6 &= ~MCG_C6_CME0;
    //
+
+// if K66 is running in highspeed mode (>120 MHz) reduce speed
+// is defined in kinetis.h and mk20dx128c
+#if defined(HAS_KINETIS_HSRUN) && F_CPU > 120000000
+    kinetis_hsrun_disable( );
+#endif   
    /* Write to PMPROT to allow all possible power modes */
    SMC_PMPROT = SMC_PMPROT_AVLLS_MASK;
    /* Set the STOPM field to 0b100 for VLLSx mode */
@@ -128,11 +131,11 @@ void gotoSleep(void)
    SYST_CSR &= ~SYST_CSR_TICKINT;      // disable systick timer interrupt
    SCB_SCR |= SCB_SCR_SLEEPDEEP_MASK;  // Set the SLEEPDEEP bit to enable deep sleep mode (STOP)
        asm volatile( "wfi" );  // WFI instruction will start entry into STOP mode
-   // will never return, but call ResetHandler() in mk20dx128.c
+   // will never return, but wake-up results in call to ResetHandler() in mk20dx128.c
 }
 
 void hibernate(uint32_t nsec)
-{  
+{  // set alarm to nsec secods in future and go to hibernate
    rtcSetup();
    llwuSetup();
    
@@ -140,6 +143,7 @@ void hibernate(uint32_t nsec)
    gotoSleep();
 }
 
+// example for using hibernate
 #ifdef TEST_HIBERNATE
 void flashLed(int del)
 {

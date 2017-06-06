@@ -49,7 +49,7 @@ void IIC_setup(int alt) // inspired by TwoWire
 		CORE_PIN18_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
 		CORE_PIN19_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
 	}
-	else
+	else   // I2CBUS == 1716
 	{
 		CORE_PIN16_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
 		CORE_PIN17_CONFIG = PORT_PCR_MUX(2)|PORT_PCR_ODE|PORT_PCR_SRE|PORT_PCR_DSE;
@@ -122,7 +122,7 @@ void i2c_resetBus(int alt) // inspired from i2c_t3
 	{   sda = 18;
         scl = 19;
 	}
-	else
+	else  // I2CBUS == 1716
 	{   sda = 17;
         scl = 16;
 	}

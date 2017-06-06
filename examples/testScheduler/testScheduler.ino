@@ -49,16 +49,20 @@
  */
 
  /**********************************************************************/
+// function1 is called via software trigger
 void function1(Ptr s, Ptr d)
 {   Serial.println("function1");
 }
 
+// testFunction is called from periodic timer
 void testFunction(Ptr s, Ptr d)
 { volatile static int count=0;  
+
+  // got software trigger slot via parameter
   int *rv =(int*) s;
   Serial.printf("testFunction %d %d\n\r",*rv,count++);
   
-  // when necessary trigger software slot passed on by *rv = *((int*) s)
+  // when it is time, trigger software slot passed on by *rv = *((int*) s)
   // use NVIC priority 7*16
   if(!(count%5)) SWI_trigger(*rv, 7*16) ;
 }
@@ -67,19 +71,20 @@ void blinkOFF(Ptr s, Ptr d)
 { digitalWriteFast(13,LOW);
 }
 
+// uncomment following line when led is switched off via delayed execution
 //#define USE_TIMER
 void blinkON(Ptr s, Ptr d)
 { 
   digitalWriteFast(13,HIGH);
 
   #ifdef USE_TIMER
-    uint32_t msec=100;
-    // add 'blinkOFF' to timed execution list
-    TIMER_add((Fxn_t) blinkOFF, (Ptr) 0, (Ptr) 0, 1, msec, 1); // delay in milliseconds
+     uint32_t msec=100;
+     // add 'blinkOFF' to timed execution list
+     TIMER_add((Fxn_t) blinkOFF, (Ptr) 0, (Ptr) 0, 1, msec, 1); // delay in milliseconds
   #else
-    uint32_t usec=100000;
-    // add 'blinkOFF' to delayed execution
-    DELAY_add((Fxn_t) blinkOFF, (Ptr) 0, (Ptr) 0, 1, usec);   // delay in microseconds
+     uint32_t usec=100000;
+     // add 'blinkOFF' to delayed execution
+     DELAY_add((Fxn_t) blinkOFF, (Ptr) 0, (Ptr) 0, 1, usec);   // delay in microseconds
   #endif
 }
 
@@ -121,8 +126,12 @@ void loop() {
   // put your main code here, to run repeatedly:
   //
   // whenever possible we run JOB_scheduler
-  static int old;
+  // it executes the highest priority job 
+  // and returns the number of pending jobs
+  //
   int nc = JOB_schedule();
+  //
+  static int old;
   if(nc != old) Serial.printf("number of active tasks: %d\n\r",nc);
   old=nc;
 }

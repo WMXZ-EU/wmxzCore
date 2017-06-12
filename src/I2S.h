@@ -79,8 +79,8 @@ class C_I2S
 public:
 	void init(void) {i2s_init();}
 	float i2s_speedConfig(int device, int nbits, int fs) {i2s_speedConfig(device, nbits, fs);}
-	void i2s_config(int isMaster, int nbits, int dual, int sync) {i2s_config(isMaster, nbits, dual, sync)};
-	void i2s_configurePorts(int iconf) {i2s_configurePorts(iconf)} 
+	void i2s_config(int isMaster, int nbits, int dual, int sync) {i2s_config(isMaster, nbits, dual, sync);}
+	void i2s_configurePorts(int iconf) {i2s_configurePorts(iconf);} 
 
 	void i2s_setupOutput(void * buffer, int ndat, int port, int prio) {	i2s_setupOutput(buffer, ndat, port, prio);} 
 	void i2s_startOutput(void) { i2s_startOutput();}

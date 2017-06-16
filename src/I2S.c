@@ -136,37 +136,37 @@ float i2s_speedConfig(int device, int nbits, int fs)
 	
 	else
   {   // find first multiplier
-	int64_t bitRate = 2l*nbits*fs;
-	int64_t scale0 = F_CPU/2;
+		int64_t bitRate = 2l*nbits*fs;
+		int64_t scale0 = F_CPU/2;
 
-	i1=1;
-	while(scale0*i1 % bitRate) { i1++; if(i1==256) break;}
-	//
-	if(i1==256) return 0.0f; // failed to find multiplier
+		i1=1;
+		while(scale0*i1 % bitRate) { i1++; if(i1==256) break;}
+		//
+		if(i1==256) return 0.0f; // failed to find multiplier
 
-	int64_t scale1=scale0*i1/bitRate;
-	i2=1;
-	i3=1;
-	while(1)
-	{ 	for(ii=0;ii<NPRIMES;ii++)
-			if ((scale1 % primes[ii])==0) { i2 *= primes[ii]; scale1/=primes[ii]; break; }
-		if( scale1<=1) break;
-		for(ii=0;ii<NPRIMES;ii++)
-			if ((scale1 % primes[ii])==0) { i3 *= primes[ii]; scale1/=primes[ii]; break; }
-		if( scale1<=1) break;
-	}
+		int64_t scale1=scale0*i1/bitRate;
+		i2=1;
+		i3=1;
+		while(1)
+		{ 	for(ii=0;ii<NPRIMES;ii++)
+				if ((scale1 % primes[ii])==0) { i2 *= primes[ii]; scale1/=primes[ii]; break; }
+			if( scale1<=1) break;
+			for(ii=0;ii<NPRIMES;ii++)
+				if ((scale1 % primes[ii])==0) { i3 *= primes[ii]; scale1/=primes[ii]; break; }
+			if( scale1<=1) break;
+		}
 
-	iscl[0]= (int) (i1-1);
-	if(i2>i3) // take larger divider first
-	{
-		iscl[1] = (int) (i2-1);
-		iscl[2] = (int) (i3-1);
-	}
-	else
-	{
-		iscl[1] = (int) (i3-1);
-		iscl[2] = (int) (i2-1);
-	}
+		iscl[0]= (int) (i1-1);
+		if(i2>i3) // take larger divider first
+		{
+			iscl[1] = (int) (i2-1);
+			iscl[2] = (int) (i3-1);
+		}
+		else
+		{
+			iscl[1] = (int) (i3-1);
+			iscl[2] = (int) (i2-1);
+		}
 
 	}
 	return F_CPU * (float)(i1) / (float)(i2) / 2.0f / (float)(i3) / (float)(2*nbits); // is sampling frequency

@@ -178,7 +178,12 @@ void i2s_config(int isMaster, int nbits, int dual, int sync)
 #if defined(__MK20DX256__)
 		mcr_src=3;
 #elif defined(__MK66FX1M0__)
+#if F_CPU == 168000000
 		mcr_src=0;
+#endif
+#if F_CPU == 240000000
+		mcr_src=3;
+#endif
 #endif
 
 	// if either transmitter or receiver is enabled, do nothing
@@ -458,7 +463,7 @@ void m_i2s_rx_isr(void)
 {	uint32_t daddr, taddr;
 	//
 	rxCount++;
-	__disable_irq();
+//	__disable_irq();
 	DMA_clearInterrupt(DMA_RX);
 	daddr = (uint32_t) DMA_destinationAddress(DMA_RX);
 	//
@@ -483,6 +488,6 @@ void m_i2s_rx_isr(void)
 	//
 	i2sInProcessing((void *) &m_i2s_rxContext,(void *) taddr);
 	//JOB_add((Fxn_t) i2sInProcessing, (void *) &m_i2s_rxContext,(void *) taddr,-1);
-	__enable_irq();
+//	__enable_irq();
 }
 
